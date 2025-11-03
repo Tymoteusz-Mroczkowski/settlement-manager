@@ -1,0 +1,372 @@
+/* eslint-disable react-refresh/only-export-components */
+import './App.css'
+import { PoorLuxury, ModestLuxury, type Luxury } from './Luxury';
+import { SmallSize, type SizeCategory } from './Sizes';
+import Menu from './Components/Menu';
+import BuildView from './Components/BuildView';
+import type { ReactElement } from 'react';
+
+export interface Construct {
+  name: string;
+  size: SizeCategory;
+  material: ConstructionMaterial;
+  currentLuxury: Luxury | null;
+  specialEffects: ConstructEffect[];
+  addEffect?: (effect: ConstructEffect) => void;
+  display: () => ReactElement;
+}
+
+export class BaseConstruct implements Construct {
+  name: string;
+  size: SizeCategory;
+  material: ConstructionMaterial;
+  currentLuxury: Luxury | null;
+  specialEffects: ConstructEffect[];
+
+  constructor(
+    name: string,
+    size: SizeCategory,
+    material: ConstructionMaterial,
+    currentLuxury: Luxury | null,
+    specialEffects: ConstructEffect[]
+  ) {
+    this.name = name;
+    this.size = size;
+    this.material = material;
+    this.currentLuxury = currentLuxury;
+    this.specialEffects = specialEffects;
+  }
+  display: () => ReactElement = () => {
+    return (
+      <>
+      <summary>{this.name}</summary>
+      <details>
+          <summary>Stats</summary>
+          <p>
+              Size: {this.size.name},<br/>
+              Material: {this.material.name},<br/>
+              MaxLuxury: {this.material.maxLuxury.name},<br/>
+              CurrentLuxury: {this.currentLuxury?.name || "None"},
+          </p>
+      </details>
+      
+      <details>
+          <summary>Effects:</summary>
+          <ul>
+              {this.specialEffects.map((effect, effectIndex) => (
+                  <li key={effectIndex}>
+                      Effect: {effect.name}
+                      Description: {effect.getDescription()}
+                  </li>
+              ))}
+          </ul>
+      </details>
+      </>
+);}}
+
+export class Building extends BaseConstruct {
+  rooms: Room[];
+  freeSpace: number;
+  constructor(
+    name: string,
+    size: SizeCategory,
+    material: ConstructionMaterial,
+    specialEffects: ConstructEffect[],
+    rooms: Room[]
+  ) {
+    super(
+      name,
+      size,
+      material,
+      null,
+      specialEffects,
+    );
+    this.rooms = rooms;
+    this.freeSpace= size.tiles;
+    for (const room of this.rooms) {
+      room.parentBuilding = this;
+      this.freeSpace-= room.size.tiles;
+    }
+  };
+
+  public AddRoom(room: Room): boolean {
+    if (this.freeSpace >= room.size.tiles) {
+      this.rooms.push(room);
+      room.parentBuilding = this;
+      this.freeSpace -= room.size.tiles;
+      return true;
+    }
+    return false;
+  }
+}
+
+export class BaseRoom extends BaseConstruct implements Room {
+  parentBuilding: Building | null = null;
+  capacity: number;
+  people: Resident[];
+  constructor(
+    name: string,
+    size: SizeCategory,
+    material: ConstructionMaterial,
+    currentLuxury: Luxury | null,
+    specialEffects: ConstructEffect[],
+    capacity: number,
+    people: Resident[]
+  ) {
+    super(
+      name,
+      size,
+      material,
+      currentLuxury,
+      specialEffects,
+    );
+    this.capacity = capacity;
+    this.people = people;
+  }
+}
+
+export class Bedroom extends BaseRoom {
+  constructor(
+    name: string,
+    size: SizeCategory,
+    material: ConstructionMaterial,
+    currentLuxury: Luxury,
+    people: Resident[]
+  ) {
+    super(
+      name,
+      size,
+      material,
+      currentLuxury,
+      [FullRest],
+      size.tiles/4,
+      people
+    );
+  }
+}
+
+export interface Room {
+  name: string;
+  size: SizeCategory;
+  parentBuilding: Building | null;
+  capacity: number;
+  people: Resident[];
+}
+
+export interface StorableItem {
+  name: string;
+  amount: number;
+}
+
+export interface ConstructionMaterial {
+  name: string;
+  maxLuxury: Luxury;
+  costPerUnit: number;
+  workRequiredPerUnit: number;
+}
+
+export const Wood: ConstructionMaterial & StorableItem = {
+  name: "Wood",
+  maxLuxury: ModestLuxury,
+  costPerUnit: 1,
+  workRequiredPerUnit: 4,
+  amount: 0,
+}
+
+export interface ConstructEffect {
+  name: string;
+  applyEffect: (construct: Construct) => string | void;
+  getDescription: () => ReactElement;
+}
+
+export const FullRest: ConstructEffect = {
+  name: "Full Rest",
+  applyEffect(construct: Construct): string | void {
+    if (construct instanceof BaseRoom) {
+      (construct as BaseRoom).people.forEach(resident => {resident.upkeepCost -= 1;})
+      return `${construct as BaseRoom}.capacity party member can get a Full Rest at ${construct.currentLuxury?.name} level.`;
+    }
+  },
+  getDescription(): ReactElement {
+    return (<p>Allows residents to fully rest and recover energy.</p>)
+  }
+}
+
+export interface Workplace {
+  workers: Resident[];
+  capacity: number;
+  assignWorker(Worker: Resident): void;
+  removeWorker(Worker: Resident): void;
+  display(): ReactElement;
+}
+
+export class BaseWorkplace implements Workplace {
+  name: string = "Base Workplace";
+  capacity: number=0;
+  workers: Resident[] = [];
+  Workplace(capacity: number) {
+    this.capacity = capacity;
+  }
+  assignWorker(Worker: Resident): void {
+    this.workers.push(Worker);
+    Worker.workplace = this;
+  }
+  removeWorker(Worker: Resident): void {
+    this.workers = this.workers.filter(worker => worker !== Worker);
+    Worker.workplace = null;
+  }
+  display() {
+    return (
+    <>
+      <h2>{this.name}</h2>
+      <p>Capacity: {this.workers.length}/{this.capacity}</p>
+      <p>Workers Assigned:</p>
+      <ul>
+        {this.workers.map((worker, index) => (
+          <li key={index}>{worker.name}
+          <button onClick={() => {
+            this.removeWorker(worker);
+          }}>Remove Worker</button>
+          <button onClick={() => {
+            for (const resident of game.residents) {
+              if (resident.workplace === null) {
+                this.assignWorker(resident);
+                break;
+              }
+
+          }}}>Assign Worker</button>
+          </li>
+        ))}
+      </ul>
+    </>
+    );
+  }
+}
+
+export class UnderConstruction implements ConstructEffect{
+  name = "Under Construction";
+  getDescription(): ReactElement {return <>
+    <p>"This construct is still being built.{this.workDone}/{this.workNeeded} work completed. {this.workplace.workers.length} workers assigned"</p>
+    <summary>Workers Assigned:</summary>
+    <details>
+      <ul>
+        {this.workplace.display()}
+      </ul>
+    </details>
+    </>};
+  workNeeded: number;
+  workDone: number;
+  workplace: BaseWorkplace;
+  constructor(construct: Construct, workers?: Resident[]) {
+    this.workNeeded = (construct.size.tiles * construct.material.workRequiredPerUnit);
+    this.workDone = 0;
+    this.workplace = new BaseWorkplace();
+    if (workers) {
+      for (const worker of workers) {
+        this.workplace.assignWorker(worker);
+      }
+    }
+  };
+  applyEffect(construct: Construct): string | void {
+    this.workDone+= this.workplace.workers.length*8; // Each worker contributes 8 work units per turn (day)
+    if (this.workDone >= this.workNeeded) {
+      construct.specialEffects = construct.specialEffects.filter(effect => effect.name !== this.name);
+      for (const worker of this.workplace.workers) {
+        worker.workplace = null;
+      }
+      return `${construct.name} construction completed!`;
+    }
+    return `${construct.name} is still under construction.`;
+  };
+}
+
+export interface Resident {
+  name: string;
+  workplace: BaseWorkplace | null;
+  upkeepCost: number;
+}
+
+export class GameState {
+  turn = 0;
+  storage: { [key: string]: number } = {};
+  constructs: Construct[] = [];
+  residents: Resident[] = [];
+
+  public Display() {
+    return (
+      <>
+        <h1>DND Settlement Manager</h1>
+        <p>Turn: {this.turn}</p>
+        <h2>Constructs:</h2>
+        <ul>
+          {this.constructs.map((construct, index) => (
+            <li key={index}>
+              {construct.name} - Size: {construct.size.name}, Material: {construct.material.name}
+              {'rooms' in construct && (construct as Building).rooms.length > 0 && (
+                <ul>
+                  {(construct as Building).rooms.map((room, roomIndex) => (
+                    <li key={roomIndex}>
+                      Room: {room.name} - Size: {room.size.name}, Luxury: {(room as BaseRoom).currentLuxury?.name}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </li>
+          ))}
+        </ul>
+      </>
+    );
+  }
+
+  public Save() {
+    const saveString = JSON.stringify(this);
+    localStorage.setItem('savegame', saveString);
+  }
+  public Load() {
+    const saveString = localStorage.getItem('savegame');
+    if (saveString) {
+      const savedState = JSON.parse(saveString);
+      this.turn = savedState.turn;
+      this.storage = savedState.storage;
+      this.constructs = savedState.constructs;
+      this.residents = savedState.residents;
+    }
+  }
+
+  public resolveTurn(): string[] {
+    this.turn += 1;
+    const turnEvents: string[] = [];
+    
+    return turnEvents;
+  }
+  public startBuild(): string | null {
+    return null;
+  }
+};
+
+export const game = new GameState();
+
+game.constructs.push(new Building(
+  "House 1",
+  SmallSize,
+  Wood,
+  new Array<ConstructEffect>(),
+  [new Bedroom(
+    "Bedroom 1",
+    SmallSize,
+    Wood,
+    PoorLuxury,
+    []  // special effects array
+  )],
+));
+
+function App() {
+  return (
+    <>
+      <Menu />
+      <BuildView />
+    </>
+  );
+}
+
+export default App
