@@ -35,6 +35,11 @@ h1 {
   line-height: 1.1;
 }
 
+h2 {
+  font-size: 2.4em;
+  line-height: 1.2;
+}
+
 button {
   border-radius: 8px;
   border: 1px solid transparent;
@@ -52,4 +57,12 @@ button:hover {
 button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
+}
+
+.clickable {
+  cursor: pointer;
+}
+
+.bold {
+  font-weight: bold;
 }

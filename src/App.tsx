@@ -4,7 +4,7 @@ import { PoorLuxury, ModestLuxury, type Luxury } from './Luxury';
 import { SmallSize, type SizeCategory } from './Sizes';
 import Menu from './Components/Menu';
 import BuildView from './Components/BuildView';
-import type { ReactElement } from 'react';
+import {useState, type ReactElement} from 'react';
 
 export interface Construct {
   name: string;
@@ -36,31 +36,27 @@ export class BaseConstruct implements Construct {
     this.currentLuxury = currentLuxury;
     this.specialEffects = specialEffects;
   }
+  
   display: () => ReactElement = () => {
     return (
       <>
-      <summary>{this.name}</summary>
-      <details>
-          <summary>Stats</summary>
-          <p>
-              Size: {this.size.name},<br/>
-              Material: {this.material.name},<br/>
-              MaxLuxury: {this.material.maxLuxury.name},<br/>
-              CurrentLuxury: {this.currentLuxury?.name || "None"},
-          </p>
-      </details>
-      
-      <details>
-          <summary>Effects:</summary>
-          <ul>
-              {this.specialEffects.map((effect, effectIndex) => (
-                  <li key={effectIndex}>
-                      Effect: {effect.name}
-                      Description: {effect.getDescription()}
-                  </li>
-              ))}
-          </ul>
-      </details>
+        <span className="bold">Stats</span>
+        <ul>
+            <li>Size: {this.size.name}</li>
+            <li>Material: {this.material.name}</li>
+            <li>MaxLuxury: {this.material.maxLuxury.name}</li>
+            <li>CurrentLuxury: {this.currentLuxury?.name || "None"}</li>
+        </ul>
+        <span className="bold">Effects:</span>
+        {this.specialEffects.length === 0 && <p>None</p>}
+        <ul>
+            {this.specialEffects.map((effect, effectIndex) => (
+                <li key={effectIndex}>
+                    Effect: {effect.name}
+                    Description: {effect.getDescription()}
+                </li>
+            ))}
+        </ul>
       </>
 );}}
 
@@ -218,7 +214,6 @@ export class BaseWorkplace implements Workplace {
   display() {
     return (
     <>
-      <h2>{this.name}</h2>
       <p>Capacity: {this.workers.length}/{this.capacity}</p>
       <p>Workers Assigned:</p>
       <ul>
@@ -233,7 +228,6 @@ export class BaseWorkplace implements Workplace {
                 this.assignWorker(resident);
                 break;
               }
-
           }}}>Assign Worker</button>
           </li>
         ))}
@@ -364,7 +358,7 @@ function App() {
   return (
     <>
       <Menu />
-      <BuildView />
+      <BuildView game={game}/>
     </>
   );
 }

@@ -1,15 +1,17 @@
-import { game } from "../App";
+import { type GameState } from "../App";
+import { ToggleHeading } from "./ToggleHeading";
 
-export default function BuildView() {
+export default function BuildView(props: {game: GameState}) {
     return (
         <>
-            <button onClick={game.startBuild}>Add Building</button>
+            <button onClick={props.game.startBuild}>Add Building</button>
             <h1>Modify Buildings</h1>
-            {game.constructs.map((construct, index) => {
+            {props.game.constructs.map((construct, index) => {
                 return (
-                <li key={index}>
-                    {construct.display()}
-                </li>);
+                    <div key={index}>
+                        <ToggleHeading title={construct.name} content={construct.display()}/>
+                    </div>
+                )
             })}
         </>
     )
