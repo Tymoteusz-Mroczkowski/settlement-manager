@@ -4,11 +4,11 @@ export function ToggleHeading(props: {title: string, content: ReactElement}) {
   const [isOpen, setIsOpen] = useState(false);
   return (
     <>
-      <h2 
+      <h3 
         onClick={() => setIsOpen(!isOpen)}
         className="clickable">
         {props.title}
-      </h2>
+      </h3>
       {isOpen ? props.content : null}
     </>
   )

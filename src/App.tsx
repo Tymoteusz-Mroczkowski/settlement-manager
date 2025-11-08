@@ -2,9 +2,9 @@
 import './App.css'
 import { PoorLuxury, ModestLuxury, type Luxury } from './Luxury';
 import { SmallSize, type SizeCategory } from './Sizes';
-import Menu from './Components/Menu';
-import BuildView from './Components/BuildView';
-import {useState, type ReactElement} from 'react';
+import {type ReactElement} from 'react';
+import { ToggleHeading } from './Components/ToggleHeading';
+import GameComponent from './Components/GameComponent';
 
 export interface Construct {
   name: string;
@@ -13,7 +13,7 @@ export interface Construct {
   currentLuxury: Luxury | null;
   specialEffects: ConstructEffect[];
   addEffect?: (effect: ConstructEffect) => void;
-  display: () => ReactElement;
+  display(): ReactElement;
 }
 
 export class BaseConstruct implements Construct {
@@ -37,7 +37,7 @@ export class BaseConstruct implements Construct {
     this.specialEffects = specialEffects;
   }
   
-  display: () => ReactElement = () => {
+  public display(): ReactElement {
     return (
       <>
         <span className="bold">Stats</span>
@@ -52,7 +52,7 @@ export class BaseConstruct implements Construct {
         <ul>
             {this.specialEffects.map((effect, effectIndex) => (
                 <li key={effectIndex}>
-                    Effect: {effect.name}
+                    Effect: {effect.name}<br/>
                     Description: {effect.getDescription()}
                 </li>
             ))}
@@ -93,6 +93,16 @@ export class Building extends BaseConstruct {
       return true;
     }
     return false;
+  }
+
+  display(): ReactElement {
+    const content = <>{this.rooms.map(room => (<><p>{room.name}</p>{(room as BaseRoom).display()}</>))}</>;
+    return (
+      <>
+        {super.display()}
+        <ToggleHeading title='Rooms' content={content}/>
+      </>
+    );
   }
 }
 
@@ -286,37 +296,17 @@ export class GameState {
   constructs: Construct[] = [];
   residents: Resident[] = [];
 
-  public Display() {
-    return (
-      <>
-        <h1>DND Settlement Manager</h1>
-        <p>Turn: {this.turn}</p>
-        <h2>Constructs:</h2>
-        <ul>
-          {this.constructs.map((construct, index) => (
-            <li key={index}>
-              {construct.name} - Size: {construct.size.name}, Material: {construct.material.name}
-              {'rooms' in construct && (construct as Building).rooms.length > 0 && (
-                <ul>
-                  {(construct as Building).rooms.map((room, roomIndex) => (
-                    <li key={roomIndex}>
-                      Room: {room.name} - Size: {room.size.name}, Luxury: {(room as BaseRoom).currentLuxury?.name}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </li>
-          ))}
-        </ul>
-      </>
-    );
-  }
-
-  public Save() {
+  public Save(): boolean {
+    /*
     const saveString = JSON.stringify(this);
+    if(!saveString) { return false; }
     localStorage.setItem('savegame', saveString);
+    return true;
+    */
+    return false;
+    // todo
   }
-  public Load() {
+  public Load(): boolean {
     const saveString = localStorage.getItem('savegame');
     if (saveString) {
       const savedState = JSON.parse(saveString);
@@ -324,7 +314,9 @@ export class GameState {
       this.storage = savedState.storage;
       this.constructs = savedState.constructs;
       this.residents = savedState.residents;
+      return true;
     }
+    return false;
   }
 
   public resolveTurn(): string[] {
@@ -340,25 +332,31 @@ export class GameState {
 
 export const game = new GameState();
 
-game.constructs.push(new Building(
-  "House 1",
-  SmallSize,
-  Wood,
-  new Array<ConstructEffect>(),
-  [new Bedroom(
-    "Bedroom 1",
-    SmallSize,
-    Wood,
-    PoorLuxury,
-    []  // special effects array
-  )],
-));
+if (!game.Load()) {  
+    game.constructs.push(new Building(
+      "House 1",
+      SmallSize,
+      Wood,
+      new Array<ConstructEffect>(),
+      [new Bedroom(
+        "Bedroom 1",
+        SmallSize,
+        Wood,
+        PoorLuxury,
+        []  // special effects array
+      )],
+  ));
+  alert("Game load failed, starting new game.");
+}
+
+if(!game.Save()) {
+  alert("Game save failed.");
+}
 
 function App() {
   return (
     <>
-      <Menu />
-      <BuildView game={game}/>
+      <GameComponent game={game}/>
     </>
   );
 }
